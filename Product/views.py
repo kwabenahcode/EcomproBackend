@@ -15,6 +15,8 @@ class ProductView(generics.GenericAPIView):
             if products:  
                 serializer = self.serializer_class(products, many=True)
                 return Response({"products":serializer.data}, status=200)
+            else:
+                return Response({"message":"There's no product available"})
         except Exception as e:
             return Response({"error": str(e)}, status=500)
         
