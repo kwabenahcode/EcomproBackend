@@ -9,16 +9,32 @@ from .serializer import *
 class ProductView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = GetAllProductSerializer
+    queryset = Product.objects.all()
+
     def get(self, request, *args, **kwargs):
+        slug = kwargs.get("slug") 
+        if slug:
+            return self.get_single_product(slug)
+        else:
+            return self.get_all_products()
+        
+        
+    def get_single_product(self, slug):
         try:
-            products = Product.objects.all()
-            if products:  
-                serializer = self.serializer_class(products, many=True)
-                return Response({"products":serializer.data}, status=200)
-            else:
-                return Response({"message":"There's no product available"})
+            product = self.get_queryset().get(slug=slug)
+            serializer = self.serializer_class(product, many=False)
+            return Response({"status":"success","product":serializer.data}, status=200)
+        except Exception as e:
+            return Response({"error":"No product found"}, status=404)
+
+    def get_all_products(self):
+        try:
+            products = self.get_queryset()
+            serializer = self.serializer_class(products, many=True)
+            return Response({"products": serializer.data}, status=200)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
         
 
 
