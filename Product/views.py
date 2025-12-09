@@ -34,6 +34,20 @@ class ProductView(generics.GenericAPIView):
             return Response({"products": serializer.data}, status=200)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+        
+
+class GetProductCategory(generics.GenericAPIView):
+    permission_classes=[permissions.AllowAny]
+    serializer_class = ProductSerializer
+    # queryset = Product
+
+    def get(self, request, *args, **kwargs):
+        category = kwargs.get("category")
+        products_category = Product.objects.filter(category__iexact=category)
+        serializer = self.serializer_class(products_category, many=True)
+        return Response({"category":serializer.data}, status=200)
+    
+
 
         
 
