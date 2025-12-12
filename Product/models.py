@@ -12,14 +12,13 @@ class Product(models.Model):
         ('Furniture', 'FURNITURE'),
         ('Beauty', "BEAUTY")
     )
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(blank=True,null=True, unique=True)
     name = models.CharField(max_length=200, blank=True, null=True)
     description = models.TextField(max_length=500,  blank=True, null=True)
     price = models.DecimalField(decimal_places=2, max_digits=10, blank=True, null=True)
     image = models.ImageField(upload_to="product_images", blank=True, null=True)
     category = models.CharField(choices=CATEGORY, max_length=15, blank=True, null=True)
+    brand = models.CharField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, blank=True, null=True)
     modified_at = models.DateTimeField(auto_now=True, blank=True, null=True)
 

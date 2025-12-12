@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'Product',
     'rest_framework',
     "corsheaders",
+    "Cart",
 ]
 
 #custom
