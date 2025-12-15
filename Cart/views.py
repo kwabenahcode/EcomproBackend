@@ -24,5 +24,6 @@ class AddItemAPI(generics.GenericAPIView):
             return Response({"data": serializer.data, "message":"Cart Item Added Successfully"}, status=200, )
         except Exception as e:
             return Response({"The error":str(e)}, status=400)
+        
 
 
