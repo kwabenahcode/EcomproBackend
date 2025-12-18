@@ -18,8 +18,9 @@ class AddItemAPI(generics.GenericAPIView):
 
             cartitem, created = CartItem.objects.get_or_create(cart=cart, product=product)
         
-            cartitem.quantity =1
-            cartitem.save()
+            if created:
+                cartitem.quantity =1
+                cartitem.save()
 
             serializer = self.serializer_class(cartitem)
             return Response({"data": serializer.data, "message":"Cart Item Added Successfully"}, status=200, )
@@ -64,7 +65,6 @@ class DeleteCartItemAPI(generics.GenericAPIView):
         cartitem = CartItem.objects.get(id=cartitem_id)  
         cartitem.delete()
         return Response({"message":"CartItem Deleted Successfully"}, status=200)
-
 
 class UpdateCartItemAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
