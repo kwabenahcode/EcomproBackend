@@ -22,7 +22,7 @@ class ProductView(generics.GenericAPIView):
     def get_single_product(self, slug):
         try:
             product = self.get_queryset().get(slug=slug)
-            serializer = self.serializer_class(product, many=False)
+            serializer = GetSingleProductSerializer(product)
             return Response({"status":"success","product":serializer.data}, status=200)
         except Exception as e:
             return Response({"error":"No product found"}, status=404)
@@ -38,7 +38,7 @@ class ProductView(generics.GenericAPIView):
 
 class GetProductCategory(generics.GenericAPIView):
     permission_classes=[permissions.AllowAny]
-    serializer_class = ProductSerializer
+    serializer_class = GetAllProductSerializer
     # queryset = Product
 
     def get(self, request, *args, **kwargs):

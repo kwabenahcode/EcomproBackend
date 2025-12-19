@@ -6,7 +6,7 @@ from decimal import Decimal
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
+    product = GetAllProductSerializer(read_only=True)
     total = serializers.SerializerMethodField()
     class Meta:
         model = CartItem
