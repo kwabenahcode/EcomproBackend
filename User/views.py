@@ -30,12 +30,12 @@ class RegisterUserAPI(generics.GenericAPIView):
                 )
             
             #check if email already exist
-            if User.objects.filter(email=email):
+            if User.objects.filter(email=email).exists():
                 return Response({"status":"failure", "message":"Email already exist"}, 
                                 status=400
                                 )
             
-            user = User.objects.create(email=email, full_name=full_name)
+            user = User(email=email, full_name=full_name)
             user.set_password(password)
             user.save()
             return Response({"status": "success", "message": "User registered successfully"},
