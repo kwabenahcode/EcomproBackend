@@ -14,13 +14,16 @@ class RegisterUserAPI(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         #condition to check if serializer is valid(meaning if everything the backend is expecting from the frontend is intact)
         if serializer.is_valid():
-            email = serializer.data["email"]
-            full_name = serializer.data["full_name"]
-            password = serializer.data["password"]
+            email = serializer.validated_data["email"]
+            full_name = serializer.validated_data["full_name"]
+            password = serializer.validated_data["password"]
 
              # Validate password
             if len(password) < 4:
-                return Response({"status":"Failure", "message":"Password must be more than 4"}, status=400)
+                return Response(
+                    {"status":"failure", "message":"Password must be more than 4"}, 
+                    status=400
+                    )
             
             #validate email format
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
@@ -34,15 +37,14 @@ class RegisterUserAPI(generics.GenericAPIView):
                 return Response({"status":"failure", "message":"Email already exist"}, 
                                 status=400
                                 )
-            
             user = User(email=email, full_name=full_name)
             user.set_password(password)
             user.save()
-            return Response({"status": "success", "message": "User registered successfully"},
+            return Response({"status": "success", "message": "User registered successfully", "user_data":serializer.data},
                 status=status.HTTP_201_CREATED,
             )
         else:
             return Response(
-                {"status": "failure", "detail": serializers.errors},
+                {"status": "failure", "detail": serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
             )
