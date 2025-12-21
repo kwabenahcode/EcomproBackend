@@ -14,37 +14,32 @@ class RegisterUserAPI(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         #condition to check if serializer is valid(meaning if everything the backend is expecting from the frontend is intact)
         if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            full_name = serializer.validated_data["full_name"]
-            password = serializer.validated_data["password"]
 
-             # Validate password
-            if len(password) < 4:
-                return Response(
-                    {"status":"failure", "message":"Password must be more than 4"}, 
-                    status=400
-                    )
-            
-            #validate email format
-            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                return Response(
-                    {"status": "failure", "message": "Invalid email address format"},
-                    status=400,
-                )
-            
-            #check if email already exist
-            if User.objects.filter(email=email).exists():
-                return Response({"status":"failure", "message":"Email already exist"}, 
-                                status=400
-                                )
-            user = User(email=email, full_name=full_name)
-            user.set_password(password)
+            user = serializer.save()
             user.save()
             return Response({"status": "success", "message": "User registered successfully", "user_data":serializer.data},
                 status=status.HTTP_201_CREATED,
             )
         else:
-            return Response(
-                {"status": "failure", "detail": serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            print(serializer.errors)
+            
+            # Extract the first error message in a simpler format
+            errors = {}
+            for field, error_list in serializer.errors.items():
+                # Extract the actual error message string
+                if isinstance(error_list, list) and len(error_list) > 0:
+                    if hasattr(error_list[0], 'string'):
+                        errors[field] = error_list[0].string
+                    else:
+                        errors[field] = str(error_list[0])
+                else:
+                    errors[field] = str(error_list)
+            
+            # Get the first error for the general message
+            first_error = next(iter(errors.values())) if errors else "Registration failed"
+            
+            return Response({
+                "status": "failure",
+                "message": first_error,
+                "errors": errors  # Include all errors if needed
+            }, status=status.HTTP_400_BAD_REQUEST)
