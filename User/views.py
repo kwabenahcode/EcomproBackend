@@ -126,3 +126,14 @@ class GetEmailAPI(generics.GenericAPIView):
             "email":user.email
         })
     
+# class RefreshTokenAPI(generics.GenericAPIView):
+#     permission_classes = [permissions.AllowAny]
+
+#     def post(self, request):
+#         refresh = request.get("access")
+#         if not is_valid_refresh(refresh):
+#             return Response(status=401)
+
+#         new_access = generate_access_token(user)
+#         return Response({"access": new_access})
+    

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework',
     "corsheaders",
     "Cart",
+    "payment",
 ]
 
 #custom
@@ -159,5 +160,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:9000",
     "http://localhost:5173",
 ]
+
+#PayStack Integration settings
+PAYSTACK_SECRET_KEY = "sk_test_08076157a47f6805653b80acdca32a7ae82d249f"
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5173/")
 
 
