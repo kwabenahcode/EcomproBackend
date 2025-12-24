@@ -6,12 +6,14 @@ from django.conf import settings
 from rest_framework import generics, permissions
 from decimal import Decimal
 
+
 from rest_framework.response import Response
 import requests
 
 # Create your views here.
 PAYSTACK_SECRET_KEY = settings.PAYSTACK_SECRET_KEY
 PAYSTACK_INITIALIZE_URL = "https://api.paystack.co/transaction/initialize"
+BASE_URL = settings.BASE_URL
 
 class InitiatePaymentAPI(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -44,7 +46,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             "email": user.email,
             "amount": paystack_amount,
             "reference": tx_ref,
-            "callback_url": f"{BASE_URL}payment-status/",
+            "callback_url": f"{BASE_URL}/payment-status/",
             }
 
             headers = {
