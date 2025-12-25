@@ -34,6 +34,25 @@ class CartSerializer(serializers.ModelSerializer):
         total = sum([item.product.price * item.quantity  for item in items])
         return total
     
+class NewCartItemSerializer(serializers.ModelSerializer):
+    product = GetAllProductSerializer(read_only=True)
+    order_id = serializers.SerializerMethodField()
+    order_date = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CartItem
+        fields = ["product", "order_id", "order_date", "quantity"]
+
+    def get_order_id(self, cartitem):
+        order_id = cartitem.cart.cart_code
+        return order_id
+    
+    def get_order_date(self, cartitem):
+        order_date = cartitem.cart.modified_at
+        return order_date
+
+
+    
     
         
 

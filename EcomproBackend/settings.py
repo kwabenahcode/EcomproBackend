@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,6 +56,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -164,5 +167,11 @@ CORS_ALLOWED_ORIGINS = [
 #PayStack Integration settings
 PAYSTACK_SECRET_KEY = "sk_test_08076157a47f6805653b80acdca32a7ae82d249f"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5173/")
+
+#Custom 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    }
 
 
