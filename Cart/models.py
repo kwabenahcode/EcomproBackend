@@ -2,6 +2,7 @@ from django.db import models
 from User.models import *
 from Product.models import *
 from django.conf import settings
+from decimal import Decimal
 
 # Create your models here.
 class Cart(models.Model):
@@ -13,6 +14,7 @@ class Cart(models.Model):
 
     def __str__(self):
         return self.cart_code
+    
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, related_name="items", on_delete=models.CASCADE, null=True, blank=True)

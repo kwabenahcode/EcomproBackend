@@ -38,10 +38,11 @@ class NewCartItemSerializer(serializers.ModelSerializer):
     product = GetAllProductSerializer(read_only=True)
     order_id = serializers.SerializerMethodField()
     order_date = serializers.SerializerMethodField()
+    paid = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ["product", "order_id", "order_date", "quantity"]
+        fields = ["product", "order_id", "order_date", "quantity", "paid"]
 
     def get_order_id(self, cartitem):
         order_id = cartitem.cart.cart_code
@@ -50,6 +51,10 @@ class NewCartItemSerializer(serializers.ModelSerializer):
     def get_order_date(self, cartitem):
         order_date = cartitem.cart.modified_at
         return order_date
+    
+    def get_paid(self, cartitem):
+        paid = cartitem.cart.paid
+        return paid
 
 
     

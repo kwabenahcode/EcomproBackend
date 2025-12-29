@@ -126,5 +126,13 @@ class GetEmailAPI(generics.GenericAPIView):
             "email":user.email
         })
     
+class GetUserProfileAPI(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        serializer = self.serializer_class(user)
+        return Response(serializer.data)
 
     

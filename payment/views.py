@@ -2,9 +2,12 @@ from django.shortcuts import render
 from .models import *
 from User.models import *
 from Cart.models import *
+from Orders.models import *
 from django.conf import settings 
 from rest_framework import generics, permissions
 from decimal import Decimal
+
+import uuid
 
 
 from rest_framework.response import Response
@@ -30,10 +33,10 @@ class InitiatePaymentAPI(generics.GenericAPIView):
 
             currency = "GHS"
 
-            tx_ref = str(uuid.uuid4())
+            ref = str(uuid.uuid4())
 
             transaction = Transaction.objects.create(
-            ref=tx_ref,
+            ref=ref,
             cart=cart,
             amount=total_amount,
             currency=currency,
@@ -45,7 +48,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             payload = {
             "email": user.email,
             "amount": paystack_amount,
-            "reference": tx_ref,
+            "reference": ref,
             "callback_url": f"{BASE_URL}payment-status/",
             }
 
@@ -64,7 +67,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             
             return Response({
                 "payment_url": res_data["data"]["authorization_url"],
-                "reference": tx_ref,
+                "reference": ref,
                 "message": "success"
             })
 
@@ -79,40 +82,53 @@ class PaymentCallBackAPI(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        try:
-            reference = request.GET.get("reference")
-            trxref = request.GET.get("trxref")
-            user = request.user
+        reference = request.GET.get("reference")
+        user = request.user
 
-            headers = {
-                "Authorization":f"Bearer {PAYSTACK_SECRET_KEY}",
+        headers = {
+            "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+        }
 
-            }
-            url = f"https://api.paystack.co/transaction/verify/{reference}"
+        url = f"https://api.paystack.co/transaction/verify/{reference}"
+        res = requests.get(url, headers=headers).json()
 
-            res = requests.get(url, headers=headers).json()
-            if res["data"]["status"] == "success":
-                transaction = Transaction.objects.get(ref=trxref)
+        if res["data"]["status"] != "success":
+            return Response({"message": "Payment verification failed"}, status=400)
 
-                if(res["data"]["status"] == "success" and float(res["data"]["amount"]/ 100 ) == float(transaction.amount)
-                and res["data"]["currency"] == transaction.currency ):
-                    transaction.status ="completed"
-                    transaction.save()
+        transaction = Transaction.objects.get(ref=reference)
 
-                    cart = transaction.cart
-                    cart.paid = True
-                    cart.user = user
-                    cart.save()
+        # 🔐 STOP DUPLICATES
+        if Order.objects.filter(transaction=transaction).exists():
+            return Response({"message": "Order already created"})
 
-                    return Response({"message": "Payment Successful",
-                        "subMessage": "Your payment has been confirmed 🎉"})
-                else:
-                    return Response({"message": "Payment Verification failed",
-                        "subMessage": "Amount or currency mismatch"})
-                
-            else:
-                return Response({"message":"failed to verify transaction with Paystack", })
-        except Exception as e:
-            print("ERROR:", e)
-            return Response(str(e), status=400)
-        
+        cart = transaction.cart
+
+        amount = sum(item.quantity * item.product.price for item in cart.items.all())
+        tax = Decimal("4.00")
+        total_amount = amount + tax
+
+        transaction.status = "completed"
+        transaction.save()
+
+        order = Order.objects.create(
+            user=user,
+            transaction=transaction,
+            order_id=f"ORD-{uuid.uuid4().hex[:8].upper()}",
+            total_amount=total_amount,
+            status="completed"
+        )
+
+        for item in cart.items.all():
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.product.price
+            )
+
+        cart.items.all().delete()
+
+        return Response({
+            "message": "Payment Successful",
+            "subMessage": "Your payment has been confirmed 🎉"
+        })
