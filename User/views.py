@@ -134,5 +134,32 @@ class GetUserProfileAPI(generics.GenericAPIView):
         user = request.user
         serializer = self.serializer_class(user)
         return Response(serializer.data)
+    
+class UpdateUserInfoAPI(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UpdateUserSerializer
+    
+    def patch(self, request):
+        user = request.user
+       
+        serializer = self.serializer_class(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "User information updated successfully",
+                    "data": serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+
 
     
