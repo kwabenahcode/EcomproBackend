@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
 from .serializer import *
 
@@ -23,7 +24,13 @@ class ProductView(generics.GenericAPIView):
         try:
             product = self.get_queryset().get(slug=slug)
             serializer = GetSingleProductSerializer(product)
-            return Response({"status":"success","product":serializer.data}, status=200)
+            product_data = serializer.data
+
+            if self.request.user.is_authenticated:
+                user_rating = Rating.objects.filter(product=product, user=self.request.user).first()
+                product_data['user_rating'] = user_rating.score if user_rating else None
+            return Response({"status": "success", "product": product_data}, status=200)
+            
         except Exception as e:
             return Response({"error":"No product found"}, status=404)
 
@@ -48,53 +55,41 @@ class GetProductCategory(generics.GenericAPIView):
         return Response({"category":serializer.data}, status=200)
     
 
-class RateProductView(generics.GenericAPIView):
+class RateProductView(generics.CreateAPIView):
     serializer_class = RatingSerializer
-    permission_classes = [permissions.AllowAny]  # User must be logged in
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        slug = kwargs.get("slug")
-
-        # 1. Get product by slug
-        try:
-            product = Product.objects.get(slug=slug)
-        except Product.DoesNotExist:
-            return Response({"error": "Product not found"}, status=404)
-
-        score = request.data.get("score")  # value from frontend
-
-         # 2. Validate score (must be 1–5)
-        try:
-            score = int(score)
-        except:
-            return Response({"error": "Invalid score"}, status=400)
-
-        if score < 1 or score > 5:
-            return Response({"error": "Score must be between 1 and 5"}, status=400)
-
+        product = get_object_or_404(Product, slug=kwargs['slug'])
         user = request.user
 
-        # 3. Create or update rating
-        rating_obj, created = Rating.objects.get_or_create(
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        score = serializer.validated_data['score']
+
+        rating, created = Rating.objects.get_or_create(
             product=product,
             user=user,
-            defaults={"score": score}
+            defaults={'score': score}
         )
 
         if not created:
-            rating_obj.score = score
-            rating_obj.save()
+            # Update rating
+            product.sum_ratings -= rating.score
+            rating.score = score
+            rating.save()
+            product.sum_ratings += score
+        else:
+            product.sum_ratings += score
+            product.total_ratings += 1
 
-        # 4. Recalculate product rating
-        all_ratings = Rating.objects.filter(product=product)
-        product.total_ratings = all_ratings.count()
-        product.sum_ratings = sum(r.score for r in all_ratings)
         product.save()
 
-        return Response(
-            {"message": "Rating saved successfully"},
-            status=200
-        )
+        return Response({
+            "average_rating": product.average_rating,
+            "total_ratings": product.total_ratings
+        }, status=200)
+
     
 
 

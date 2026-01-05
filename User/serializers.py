@@ -49,7 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["email", "full_name", "state", "image", "address", "orders"]
 
     def get_orders(self, user):
-        orders = Order.objects.filter(user=user).order_by("-created_at")
+        orders = Order.objects.filter(user=user).order_by("-created_at")[:3]
         return OrderSerializer(orders, many=True).data
     
 class UpdateUserSerializer(serializers.ModelSerializer):

@@ -10,5 +10,4 @@ urlpatterns = [
     path("auth/login/", views.UserLoginAPI.as_view(), name="login"),
     path("get_email", views.GetEmailAPI.as_view(), name="get_email"),
     path("user_profile", views.GetUserProfileAPI.as_view(),name="user_profile"),
-    path("update_userInfo/", views.UpdateUserInfoAPI.as_view(), name="update_userInfo")
-]
+    path("update_userInfo/", views.UpdateUserInfoAPI.as_view(), name="update_userInfo")]

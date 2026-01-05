@@ -79,12 +79,11 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             return Response({"error": str(e)}, status=500)
 
 class PaymentCallBackAPI(generics.GenericAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = []
 
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         try:
             reference = request.GET.get("reference")
-            user = request.user
 
             headers = {
                 "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
@@ -94,47 +93,67 @@ class PaymentCallBackAPI(generics.GenericAPIView):
             res = requests.get(url, headers=headers).json()
 
             if res["data"]["status"] != "success":
-                return Response({"message": "Payment verification failed"}, status=400)
+                return Response(
+                    {"message": "Payment verification failed"},
+                    status=400
+                )
 
             transaction = Transaction.objects.get(ref=reference)
 
-            try:
-                transaction.order
-                return Response({"message": "Order already created"})
-            except Order.DoesNotExist:
-                pass
+            order = Order.objects.filter(transaction=transaction).first()
+
+            if order:
+                return Response({
+                    "message": "Payment Successful",
+                    "subMessage": "Your order is already confirmed 🎉"
+                })
+
+            # 🔒 IDPOTENCY CHECK (MOST IMPORTANT PART)
+            # if hasattr(transaction, "order"):
+            #     return Response({
+            #         "message": "Payment already processed",
+            #         "subMessage": "Your order is already confirmed 🎉"
+            #     })
 
             cart = transaction.cart
 
-            amount = sum(item.quantity * item.product.price for item in cart.items.all())
+            amount = sum(
+                item.quantity * item.product.price
+                for item in cart.items.all()
+            )
             tax = Decimal("4.00")
             total_amount = amount + tax
 
             transaction.status = "completed"
             transaction.save()
 
-            order = Order.objects.create(
-                user=user,
+            order, created = Order.objects.get_or_create(
+                user=transaction.user,
                 transaction=transaction,
                 order_id=f"ORD-{uuid.uuid4().hex[:8].upper()}",
                 total_amount=total_amount,
-                status="completed"
+                status="paid"
             )
 
-            for item in cart.items.all():
-                OrderItem.objects.create(
-                    order=order,
-                    product=item.product,
-                    quantity=item.quantity,
-                    price=item.product.price
-                )
+            if created:
+                for item in cart.items.all():
+                    OrderItem.objects.create(
+                        order=order,
+                        product=item.product,
+                        quantity=item.quantity,
+                        price=item.product.price
+                    )
 
-            cart.items.all().delete()
+                cart.items.all().delete()
 
             return Response({
                 "message": "Payment Successful",
                 "subMessage": "Your payment has been confirmed 🎉"
             })
+
         except Exception as e:
             print(f"Error in payment callback: {e}")
-            return Response({"message": "Internal server error"}, status=500)
+            return Response(
+                {"message": "Internal server error"},
+                status=500
+            )
