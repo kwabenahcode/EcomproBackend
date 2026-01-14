@@ -33,14 +33,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 'yes']
 
 
-# Dynamically set ALLOWED_HOSTS depending on DEBUG and environment variable
-allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')  # e.g. "yourusername.pythonanywhere.com,localhost,127.0.0.1"
+ALLOWED_HOSTS = ["*"]  
 
-if DEBUG:
-    ALLOWED_HOSTS = []  # allow all locally when debugging
-else:
-    # split and strip hosts from environment variable
-    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
 
 
 # Application definition
