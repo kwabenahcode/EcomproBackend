@@ -22,8 +22,10 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from .views import homepage
 
 urlpatterns = [
+    path('', homepage),
     path('admin/', admin.site.urls),
     path("api/", include('Product.urls')),
     path("api/", include('Cart.urls')),
