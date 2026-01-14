@@ -13,10 +13,13 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 
+from dotenv import load_dotenv
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-import os
+
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 
 
@@ -24,12 +27,20 @@ import os
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-p8^8r0g@9vhg@37f6&oj0fonc4a#6bw784f@wq7g)$w7#amusw'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() in ['true', '1', 'yes']
 
-ALLOWED_HOSTS = []
+
+# Dynamically set ALLOWED_HOSTS depending on DEBUG and environment variable
+allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')  # e.g. "yourusername.pythonanywhere.com,localhost,127.0.0.1"
+
+if DEBUG:
+    ALLOWED_HOSTS = []  # allow all locally when debugging
+else:
+    # split and strip hosts from environment variable
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
 
 
 # Application definition
@@ -59,7 +70,10 @@ REST_FRAMEWORK = {
 }
 
 
-MIDDLEWARE = [
+MIDDLEWARE = [ 
+    #Custom CoreHeaders
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -68,9 +82,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
-    #Custom CoreHeaders
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.common.CommonMiddleware",
+   
 ]
 
 ROOT_URLCONF = 'EcomproBackend.urls'
