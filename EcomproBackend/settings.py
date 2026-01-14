@@ -166,8 +166,8 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 #PayStack Integration settings
-PAYSTACK_SECRET_KEY = "sk_test_08076157a47f6805653b80acdca32a7ae82d249f"
-BASE_URL = os.getenv("BASE_URL", "http://localhost:5173/")
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5173")
 
 #Custom 
 SIMPLE_JWT = {
