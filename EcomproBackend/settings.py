@@ -47,10 +47,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     #Custom Apps
+    "corsheaders",
+    'rest_framework',
     'User',
     'Product',
-    'rest_framework',
-    "corsheaders",
     "Cart",
     "payment",
     "Orders",
@@ -155,7 +155,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles' 
 STATICFILES_DIRS = [BASE_DIR / 'static'] 
-
 #Custom Ends here
 
 # Default primary key field type
@@ -164,12 +163,14 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://example.com",
-    "https://sub.example.com",
     "http://localhost:8080",
     "http://127.0.0.1:9000",
     "http://localhost:5173",
+    "http://localhost:5174",
 ]
+
+CORS_ALLOW_CREDENTIALS = True
+
 
 #PayStack Integration settings
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
