@@ -163,11 +163,9 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",
-    "http://127.0.0.1:9000",
     "http://localhost:5173",
     "http://localhost:5174",
-    
+    "https://ecompro-frontend.vercel.app/"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
