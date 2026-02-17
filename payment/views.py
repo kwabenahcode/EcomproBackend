@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect  # Make sure redirect is imported
 from .models import *
 from User.models import *
 from Cart.models import *
@@ -6,11 +6,7 @@ from Orders.models import *
 from django.conf import settings 
 from rest_framework import generics, permissions
 from decimal import Decimal
-from django.shortcuts import redirect
-
 import uuid
-
-
 from rest_framework.response import Response
 import requests
 
@@ -37,20 +33,20 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             ref = str(uuid.uuid4())
 
             transaction = Transaction.objects.create(
-            ref=ref,
-            cart=cart,
-            amount=total_amount,
-            currency=currency,
-            user=user,
-            status="pending"
+                ref=ref,
+                cart=cart,
+                amount=total_amount,
+                currency=currency,
+                user=user,
+                status="pending"
             )
             paystack_amount = int(total_amount * 100)
 
             payload = {
-            "email": user.email,
-            "amount": paystack_amount,
-            "reference": ref,
-            "callback_url": f"{BASE_URL}/api/payment-status/",
+                "email": user.email,
+                "amount": paystack_amount,
+                "reference": ref,
+                "callback_url": f"{BASE_URL}/api/payment-status/",
             }
 
             headers = {
@@ -78,20 +74,33 @@ class InitiatePaymentAPI(generics.GenericAPIView):
         except Exception as e:
             print("ERROR:", e)
             return Response({"error": str(e)}, status=500)
-
-
-
+        
+        
 class PaymentCallBackAPI(generics.GenericAPIView):
     permission_classes = []
 
     def get(self, request, *args, **kwargs):
         try:
             reference = request.GET.get("reference")
-            trxref = request.GET.get("trxref")
             
-            # Get frontend URL from settings
-            frontend_url = settings.FRONTEND_URL  # https://ecompro-online.vercel.app
-
+            # If this is an API call from React (not a Paystack redirect)
+            if request.headers.get('Accept') == 'application/json' or 'api' in request.path:
+                # Return JSON for React to consume
+                transaction = Transaction.objects.get(ref=reference)
+                order = Order.objects.filter(transaction=transaction).first()
+                
+                if order:
+                    return Response({
+                        "message": "Payment Successful",
+                        "subMessage": "Your payment has been confirmed 🎉"
+                    })
+                else:
+                    return Response({
+                        "message": "Payment Pending",
+                        "subMessage": "Payment received but order is being processed"
+                    })
+            
+            # Otherwise, this is a Paystack redirect - do the full verification and redirect
             headers = {
                 "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
             }
@@ -100,46 +109,28 @@ class PaymentCallBackAPI(generics.GenericAPIView):
             res = requests.get(url, headers=headers).json()
 
             if res["data"]["status"] != "success":
-                return redirect(
-                    f"{frontend_url}/payment-status?"
-                    f"error=verification_failed&"
-                    f"reference={reference}"
-                )
+                return redirect(f"{settings.FRONTEND_URL}/payment-status?error=verification_failed&reference={reference}")
 
             transaction = Transaction.objects.get(ref=reference)
             order = Order.objects.filter(transaction=transaction).first()
 
-            if order:
-                # Order already exists, redirect to success page
-                return redirect(
-                    f"{frontend_url}/payment-status?"
-                    f"reference={reference}&"
-                    f"order_id={order.order_id}&"
-                    f"amount={order.total_amount}&"
-                    f"status=already_confirmed"
+            if not order:
+                cart = transaction.cart
+                amount = sum(item.quantity * item.product.price for item in cart.items.all())
+                tax = Decimal("4.00")
+                total_amount = amount + tax
+
+                transaction.status = "completed"
+                transaction.save()
+
+                order = Order.objects.create(
+                    user=transaction.user,
+                    transaction=transaction,
+                    order_id=f"ORD-{uuid.uuid4().hex[:8].upper()}",
+                    total_amount=total_amount,
+                    status="paid"
                 )
 
-            cart = transaction.cart
-
-            amount = sum(
-                item.quantity * item.product.price
-                for item in cart.items.all()
-            )
-            tax = Decimal("4.00")
-            total_amount = amount + tax
-
-            transaction.status = "completed"
-            transaction.save()
-
-            order, created = Order.objects.get_or_create(
-                user=transaction.user,
-                transaction=transaction,
-                order_id=f"ORD-{uuid.uuid4().hex[:8].upper()}",
-                total_amount=total_amount,
-                status="paid"
-            )
-
-            if created:
                 for item in cart.items.all():
                     OrderItem.objects.create(
                         order=order,
@@ -150,26 +141,9 @@ class PaymentCallBackAPI(generics.GenericAPIView):
 
                 cart.items.all().delete()
 
-            # Redirect to frontend success page
-            return redirect(
-                f"{frontend_url}/payment-status?"
-                f"reference={reference}&"
-                f"order_id={order.order_id}&"
-                f"amount={total_amount}"
-            )
-
-        except Transaction.DoesNotExist:
-            print(f"Transaction not found for reference: {reference}")
-            return redirect(
-                f"{frontend_url}/payment-status?"
-                f"error=transaction_not_found&"
-                f"reference={reference}"
-            )
+            # Redirect to frontend with just the reference
+            return redirect(f"{settings.FRONTEND_URL}/payment-status?reference={reference}")
 
         except Exception as e:
             print(f"Error in payment callback: {e}")
-            return redirect(
-                f"{frontend_url}/payment-status?"
-                f"error={str(e)}&"
-                f"reference={reference if 'reference' in locals() else ''}"
-            )
+            return redirect(f"{settings.FRONTEND_URL}/payment-status?error={str(e)}&reference={reference if 'reference' in locals() else ''}")
