@@ -32,7 +32,6 @@ urlpatterns = [
     path("api/", include('User.urls')),
     path("api/", include('payment.urls')),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('payment-status/', include('payment.urls')),
 ] 
 
 urlpatterns +=static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
