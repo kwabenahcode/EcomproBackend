@@ -88,6 +88,9 @@ class PaymentCallBackAPI(generics.GenericAPIView):
         try:
             reference = request.GET.get("reference")
             trxref = request.GET.get("trxref")
+            
+            # Get frontend URL from settings
+            frontend_url = settings.FRONTEND_URL  # https://ecompro-online.vercel.app
 
             headers = {
                 "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
@@ -97,19 +100,24 @@ class PaymentCallBackAPI(generics.GenericAPIView):
             res = requests.get(url, headers=headers).json()
 
             if res["data"]["status"] != "success":
-                return Response(
-                    {"message": "Payment Failed", "subMessage": "Payment verification failed"},
-                    status=400
+                return redirect(
+                    f"{frontend_url}/payment-status?"
+                    f"error=verification_failed&"
+                    f"reference={reference}"
                 )
 
             transaction = Transaction.objects.get(ref=reference)
             order = Order.objects.filter(transaction=transaction).first()
 
             if order:
-                return Response({
-                    "message": "Payment Successful",
-                    "subMessage": "Your order is already confirmed 🎉"
-                })
+                # Order already exists, redirect to success page
+                return redirect(
+                    f"{frontend_url}/payment-status?"
+                    f"reference={reference}&"
+                    f"order_id={order.order_id}&"
+                    f"amount={order.total_amount}&"
+                    f"status=already_confirmed"
+                )
 
             cart = transaction.cart
 
@@ -142,14 +150,26 @@ class PaymentCallBackAPI(generics.GenericAPIView):
 
                 cart.items.all().delete()
 
-            return Response({
-                "message": "Payment Successful",
-                "subMessage": "Your payment has been confirmed 🎉"
-            })
+            # Redirect to frontend success page
+            return redirect(
+                f"{frontend_url}/payment-status?"
+                f"reference={reference}&"
+                f"order_id={order.order_id}&"
+                f"amount={total_amount}"
+            )
+
+        except Transaction.DoesNotExist:
+            print(f"Transaction not found for reference: {reference}")
+            return redirect(
+                f"{frontend_url}/payment-status?"
+                f"error=transaction_not_found&"
+                f"reference={reference}"
+            )
 
         except Exception as e:
             print(f"Error in payment callback: {e}")
-            return Response(
-                {"message": "Error", "subMessage": str(e)},
-                status=500
+            return redirect(
+                f"{frontend_url}/payment-status?"
+                f"error={str(e)}&"
+                f"reference={reference if 'reference' in locals() else ''}"
             )
