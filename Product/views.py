@@ -19,7 +19,6 @@ class ProductView(generics.GenericAPIView):
         else:
             return self.get_all_products()
         
-        
     def get_single_product(self, slug):
         try:
             product = self.get_queryset().get(slug=slug)

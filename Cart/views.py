@@ -36,12 +36,34 @@ class GetProductInCartAPI(generics.GenericAPIView):
         cart_code = request.query_params.get('cart_code')
         product_id = request.query_params.get('product_id')
 
-        cart = Cart.objects.get(cart_code=cart_code)
-        product = Product.objects.get(id=product_id)
+        # Handle missing parameters
+        if not cart_code or not product_id:
+            return Response({
+                "error": "cart_code and product_id are required",
+                "Product_in_Cart": False
+            }, status=400)
 
+        # Get or create cart - this ensures cart always exists
+        cart, created = Cart.objects.get_or_create(cart_code=cart_code)
+        
+        if created:
+            print(f"New cart created with code: {cart_code}")
+
+        try:
+            # Try to get the product
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            # Product doesn't exist
+            return Response({
+                "error": "Product not found",
+                "Product_in_Cart": False
+            }, status=404)
+
+        # Check if product exists in cart
         product_exist_in_cart = CartItem.objects.filter(cart=cart, product=product).exists()
-        print("This product is: " , product_exist_in_cart)
-        return Response({"Product_in_Cart":product_exist_in_cart})
+        print("This product is in cart: ", product_exist_in_cart)
+        
+        return Response({"Product_in_Cart": product_exist_in_cart}, status=200)
     
 class GetCart(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
