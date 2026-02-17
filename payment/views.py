@@ -49,7 +49,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             "email": user.email,
             "amount": paystack_amount,
             "reference": ref,
-            "callback_url": f"{BASE_URL}/payment-status/",
+            "callback_url": f"{BASE_URL}/api/payment-status/",
             }
 
             headers = {
