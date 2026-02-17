@@ -166,16 +166,69 @@ class PaymentStatusAPI(generics.GenericAPIView):
         try:
             transaction = Transaction.objects.get(ref=reference)
 
+            # If already completed → return success immediately
             if transaction.status == "completed":
                 return Response({
                     "message": "Payment Successful",
                     "subMessage": "Your payment has been confirmed 🎉"
                 })
+
+            # Otherwise verify directly with Paystack
+            headers = {
+                "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
+            }
+
+            response = requests.get(
+                f"{PAYSTACK_VERIFY_URL}{reference}",
+                headers=headers
+            ).json()
+
+            print("PAYSTACK VERIFY (STATUS API):", response)
+
+            if response.get("status") and response["data"]["status"] == "success":
+
+                # Prevent duplicate order
+                order_exists = Order.objects.filter(transaction=transaction).exists()
+
+                if not order_exists:
+                    cart = transaction.cart
+
+                    total_amount = sum(
+                        item.quantity * item.product.price
+                        for item in cart.items.all()
+                    ) + Decimal("4.00")
+
+                    transaction.status = "completed"
+                    transaction.save()
+
+                    order = Order.objects.create(
+                        user=transaction.user,
+                        transaction=transaction,
+                        order_id=f"ORD-{uuid.uuid4().hex[:8].upper()}",
+                        total_amount=total_amount,
+                        status="paid"
+                    )
+
+                    for item in cart.items.all():
+                        OrderItem.objects.create(
+                            order=order,
+                            product=item.product,
+                            quantity=item.quantity,
+                            price=item.product.price
+                        )
+
+                    cart.items.all().delete()
+
+                return Response({
+                    "message": "Payment Successful",
+                    "subMessage": "Your payment has been confirmed 🎉"
+                })
+
             else:
                 return Response({
-                    "message": "Payment Pending",
-                    "subMessage": "Payment is still processing"
-                })
+                    "message": "Payment Failed",
+                    "subMessage": "Payment could not be verified"
+                }, status=400)
 
         except Transaction.DoesNotExist:
             return Response({
