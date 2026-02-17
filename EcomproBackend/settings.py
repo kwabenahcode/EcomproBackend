@@ -175,7 +175,9 @@ CORS_ALLOW_CREDENTIALS = True
 
 #PayStack Integration settings
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
-BASE_URL = os.getenv("BASE_URL", "http://localhost:5173")
+BASE_URL = os.getenv("BASE_URL", 'https://ecompro.pythonanywhere.com')
+
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://ecompro-online.vercel.app')
 
 #Custom 
 SIMPLE_JWT = {

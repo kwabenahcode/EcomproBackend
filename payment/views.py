@@ -6,6 +6,7 @@ from Orders.models import *
 from django.conf import settings 
 from rest_framework import generics, permissions
 from decimal import Decimal
+from django.shortcuts import redirect
 
 import uuid
 
@@ -78,12 +79,15 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             print("ERROR:", e)
             return Response({"error": str(e)}, status=500)
 
+
+
 class PaymentCallBackAPI(generics.GenericAPIView):
     permission_classes = []
 
     def get(self, request, *args, **kwargs):
         try:
             reference = request.GET.get("reference")
+            trxref = request.GET.get("trxref")  #Paystack also sends this
 
             headers = {
                 "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
@@ -92,10 +96,15 @@ class PaymentCallBackAPI(generics.GenericAPIView):
             url = f"https://api.paystack.co/transaction/verify/{reference}"
             res = requests.get(url, headers=headers).json()
 
+            # Get frontend URL from settings or use default
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://ecompro-online.vercel.app')
+
             if res["data"]["status"] != "success":
-                return Response(
-                    {"message": "Payment verification failed"},
-                    status=400
+                # Redirect to frontend with error
+                return redirect(
+                    f"{frontend_url}/payment-failed?"
+                    f"error=verification_failed&"
+                    f"reference={reference}"
                 )
 
             transaction = Transaction.objects.get(ref=reference)
@@ -103,17 +112,14 @@ class PaymentCallBackAPI(generics.GenericAPIView):
             order = Order.objects.filter(transaction=transaction).first()
 
             if order:
-                return Response({
-                    "message": "Payment Successful",
-                    "subMessage": "Your order is already confirmed 🎉"
-                })
-
-            # 🔒 IDPOTENCY CHECK (MOST IMPORTANT PART)
-            # if hasattr(transaction, "order"):
-            #     return Response({
-            #         "message": "Payment already processed",
-            #         "subMessage": "Your order is already confirmed 🎉"
-            #     })
+                # Order already exists, redirect to success page
+                return redirect(
+                    f"{frontend_url}/payment-success?"
+                    f"reference={reference}&"
+                    f"order_id={order.order_id}&"
+                    f"amount={order.total_amount}&"
+                    f"status=already_confirmed"
+                )
 
             cart = transaction.cart
 
@@ -146,14 +152,28 @@ class PaymentCallBackAPI(generics.GenericAPIView):
 
                 cart.items.all().delete()
 
-            return Response({
-                "message": "Payment Successful",
-                "subMessage": "Your payment has been confirmed 🎉"
-            })
+            # Redirect to frontend success page
+            return redirect(
+                f"{frontend_url}/payment-success?"
+                f"reference={reference}&"
+                f"order_id={order.order_id}&"
+                f"amount={total_amount}"
+            )
+
+        except Transaction.DoesNotExist:
+            print(f"Transaction not found for reference: {reference}")
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://ecompro-online.vercel.app')
+            return redirect(
+                f"{frontend_url}/payment-failed?"
+                f"error=transaction_not_found&"
+                f"reference={reference}"
+            )
 
         except Exception as e:
             print(f"Error in payment callback: {e}")
-            return Response(
-                {"message": "Internal server error"},
-                status=500
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://ecompro-online.vercel.app')
+            return redirect(
+                f"{frontend_url}/payment-failed?"
+                f"error={str(e)}&"
+                f"reference={reference if 'reference' in locals() else ''}"
             )
