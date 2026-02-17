@@ -50,7 +50,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             "email": user.email,
             "amount": paystack_amount,
             "reference": ref,
-            "callback_url": f"{BASE_URL}/api/payment-status/",
+            "callback_url": f"{BASE_URL}/payment-status/",
             }
 
             headers = {
@@ -87,7 +87,7 @@ class PaymentCallBackAPI(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         try:
             reference = request.GET.get("reference")
-            trxref = request.GET.get("trxref")  #Paystack also sends this
+            trxref = request.GET.get("trxref")  # Paystack also sends this
 
             headers = {
                 "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
