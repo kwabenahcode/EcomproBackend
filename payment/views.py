@@ -50,7 +50,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             "email": user.email,
             "amount": paystack_amount,
             "reference": ref,
-            "callback_url": f"{BASE_URL}/payment-status/",
+            "callback_url": f"{BASE_URL}/api/payment-status/",
             }
 
             headers = {
@@ -87,7 +87,7 @@ class PaymentCallBackAPI(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
         try:
             reference = request.GET.get("reference")
-            trxref = request.GET.get("trxref")  # Paystack also sends this
+            trxref = request.GET.get("trxref")
 
             headers = {
                 "Authorization": f"Bearer {PAYSTACK_SECRET_KEY}",
@@ -96,30 +96,20 @@ class PaymentCallBackAPI(generics.GenericAPIView):
             url = f"https://api.paystack.co/transaction/verify/{reference}"
             res = requests.get(url, headers=headers).json()
 
-            # Get frontend URL from settings or use default
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://ecompro-online.vercel.app')
-
             if res["data"]["status"] != "success":
-                # Redirect to frontend with error
-                return redirect(
-                    f"{frontend_url}/payment-failed?"
-                    f"error=verification_failed&"
-                    f"reference={reference}"
+                return Response(
+                    {"message": "Payment Failed", "subMessage": "Payment verification failed"},
+                    status=400
                 )
 
             transaction = Transaction.objects.get(ref=reference)
-
             order = Order.objects.filter(transaction=transaction).first()
 
             if order:
-                # Order already exists, redirect to success page
-                return redirect(
-                    f"{frontend_url}/payment-success?"
-                    f"reference={reference}&"
-                    f"order_id={order.order_id}&"
-                    f"amount={order.total_amount}&"
-                    f"status=already_confirmed"
-                )
+                return Response({
+                    "message": "Payment Successful",
+                    "subMessage": "Your order is already confirmed 🎉"
+                })
 
             cart = transaction.cart
 
@@ -152,28 +142,14 @@ class PaymentCallBackAPI(generics.GenericAPIView):
 
                 cart.items.all().delete()
 
-            # Redirect to frontend success page
-            return redirect(
-                f"{frontend_url}/payment-success?"
-                f"reference={reference}&"
-                f"order_id={order.order_id}&"
-                f"amount={total_amount}"
-            )
-
-        except Transaction.DoesNotExist:
-            print(f"Transaction not found for reference: {reference}")
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://ecompro-online.vercel.app')
-            return redirect(
-                f"{frontend_url}/payment-failed?"
-                f"error=transaction_not_found&"
-                f"reference={reference}"
-            )
+            return Response({
+                "message": "Payment Successful",
+                "subMessage": "Your payment has been confirmed 🎉"
+            })
 
         except Exception as e:
             print(f"Error in payment callback: {e}")
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'https://ecompro-online.vercel.app')
-            return redirect(
-                f"{frontend_url}/payment-failed?"
-                f"error={str(e)}&"
-                f"reference={reference if 'reference' in locals() else ''}"
+            return Response(
+                {"message": "Error", "subMessage": str(e)},
+                status=500
             )
