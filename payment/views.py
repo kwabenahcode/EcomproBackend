@@ -45,7 +45,7 @@ class InitiatePaymentAPI(generics.GenericAPIView):
             paystack_amount = int(total_amount * 100)
 
             # ✅ IMPORTANT: This is the Paystack redirect callback endpoint (AllowAny)
-            callback_url = f"{settings.BASE_URL}/payment/payment_callback/"
+            callback_url = f"{settings.BASE_URL}/api/payment_callback/"
 
             payload = {
                 "email": user.email,
