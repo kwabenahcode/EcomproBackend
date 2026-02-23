@@ -84,7 +84,7 @@ class PaymentCallBackAPI(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            reference = request.GET.get("reference")
+            reference = request.GET.get("reference") or request.GET.get("trxref")
             trxref = request.GET.get("trxref")  # Paystack also sends this
 
             headers = {
@@ -121,12 +121,12 @@ class PaymentCallBackAPI(generics.GenericAPIView):
 
             cart = transaction.cart
 
-            amount = sum(
-                item.quantity * item.product.price
-                for item in cart.items.all()
-            )
-            tax = Decimal("4.00")
-            total_amount = amount + tax
+            # amount = sum(
+            #     item.quantity * item.product.price
+            #     for item in cart.items.all()
+            # )
+            # tax = Decimal("4.00")
+            total_amount = transaction.amount
 
             transaction.status = "completed"
             transaction.save()
